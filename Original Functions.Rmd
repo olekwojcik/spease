@@ -1,0 +1,489 @@
+---
+title: "Functions"
+author: "Shisham Adhikari"
+date: "4/18/2021"
+output: html_document
+---
+
+
+```{r}
+library(rlang)
+kerden <- function(mydf, myxcol, myycol, mytitle) {
+   ggplot2::ggplot(data = mydf, aes(x=reorder({{ myxcol }}, 
+      {{ myycol }}), y= {{ myycol }})) +
+    geom_col(color = "black", fill="#0072B2") +
+    xlab("") +
+    ylab("") +
+    coord_flip() +
+    ggtitle(mytitle) +
+    theme_classic()   +
+    theme(plot.title=element_text(size=24))
+}
+```
+
+
+###F function code
+```{r}
+function (X, ..., eps = NULL, r = NULL, breaks = NULL, correction = c("rs", 
+    "km", "cs"), domain = NULL) 
+{
+    verifyclass(X, "ppp")
+    if (!is.null(domain)) 
+        stopifnot(is.subset.owin(domain, Window(X)))
+    rorbgiven <- !is.null(r) || !is.null(breaks)
+    checkspacing <- !isFALSE(list(...)$checkspacing)
+    testme <- isTRUE(list(...)$testme)
+    W <- Window(X)
+    npts <- npoints(X)
+    lambda <- npts/area(W)
+    dwin <- as.mask(W, eps = eps)
+    dX <- ppp(X$x, X$y, window = dwin, check = FALSE)
+    rmaxdefault <- rmax.rule("F", dwin, lambda)
+    breaks <- handle.r.b.args(r, breaks, dwin, eps, rmaxdefault = rmaxdefault)
+    rvals <- breaks$r
+    rmax <- breaks$max
+    if (testme || (rorbgiven && checkspacing)) 
+        check.finespacing(rvals, if (is.null(eps)) 
+            NULL
+        else eps/4, dwin, rmaxdefault = rmaxdefault, action = "fatal", 
+            rname = "r", context = "in Fest(X, r)")
+    if (is.null(correction)) {
+        correction <- c("rs", "km", "cs")
+    }
+    else correction <- pickoption("correction", correction, c(none = "none", 
+        border = "rs", rs = "rs", KM = "km", km = "km", Kaplan = "km", 
+        cs = "cs", ChiuStoyan = "cs", Hanisch = "cs", han = "cs", 
+        best = "km"), multi = TRUE)
+    df <- data.frame(r = rvals, theo = 1 - exp(-lambda * pi * 
+        rvals^2))
+    Z <- fv(df, "r", substitute(F(r), NULL), "theo", . ~ r, c(0, 
+        rmax), c("r", "%s[pois](r)"), c("distance argument r", 
+        "theoretical Poisson %s"), fname = "F")
+    nr <- length(rvals)
+    zeroes <- numeric(nr)
+    if (X$window$type == "rectangle") {
+        e <- exactdt(dX)
+        dist <- e$d
+        bdry <- e$b
+        if (!is.null(domain)) {
+            ok <- inside.owin(raster.xy(e$w), , domain)
+            dist <- dist[ok]
+            bdry <- bdry[ok]
+        }
+    }
+    else {
+        e <- exactdt(dX)
+        b <- bdist.pixels(dX$window, style = "matrix")
+        mm <- dwin$m
+        if (!is.null(domain)) {
+            ok <- inside.owin(raster.xy(e$w), , domain)
+            mm <- as.vector(mm) & ok
+        }
+        dist <- e$d[mm]
+        bdry <- b[mm]
+    }
+    d <- (dist <= bdry)
+    o <- pmin.int(dist, bdry)
+    if ("none" %in% correction) {
+        if (npts == 0) 
+            edf <- zeroes
+        else {
+            hh <- hist(dist[dist <= rmax], breaks = breaks$val, 
+                plot = FALSE)$counts
+            edf <- cumsum(hh)/length(dist)
+        }
+        Z <- bind.fv(Z, data.frame(raw = edf), "hat(%s)[raw](r)", 
+            "uncorrected estimate of %s", "raw")
+    }
+    if ("cs" %in% correction) {
+        if (npts == 0) 
+            cs <- zeroes
+        else {
+            x <- dist[d]
+            a <- eroded.areas(W, rvals)
+            h <- hist(x[x <= rmax], breaks = breaks$val, plot = FALSE)$counts
+            H <- cumsum(h/a)
+            cs <- H/max(H[is.finite(H)])
+        }
+        Z <- bind.fv(Z, data.frame(cs = cs), "hat(%s)[cs](r)", 
+            "Chiu-Stoyan estimate of %s", "cs")
+    }
+    if (any(correction %in% c("rs", "km"))) {
+        want.rs <- "rs" %in% correction
+        want.km <- "km" %in% correction
+        selection <- c(want.rs, want.km, want.km, want.km)
+        tags <- c("rs", "km", "hazard", "theohaz")[selection]
+        labels <- c("hat(%s)[bord](r)", "hat(%s)[km](r)", "hat(h)[km](r)", 
+            "h[pois](r)")[selection]
+        descr <- c("border corrected estimate of %s", "Kaplan-Meier estimate of %s", 
+            "Kaplan-Meier estimate of hazard function h(r)", 
+            "theoretical Poisson hazard h(r)")[selection]
+        if (npts == 0) {
+            result <- as.data.frame(matrix(0, nr, length(tags)))
+            names(result) <- tags
+        }
+        else {
+            result <- km.rs.opt(o, bdry, d, breaks, KM = want.km, 
+                RS = want.rs)
+            result$theohaz <- 2 * pi * lambda * rvals
+            result <- as.data.frame(result[tags])
+        }
+        Z <- bind.fv(Z, result, labels, descr, if (want.km) 
+            "km"
+        else "rs")
+    }
+    unitname(Z) <- unitname(X)
+    nama <- names(Z)
+    fvnames(Z, ".") <- rev(setdiff(nama, c("r", "hazard", "theohaz")))
+    attr(Z, "alim") <- with(Z, range(.x[is.finite(.y) & .y <= 
+        0.9]))
+    attr(Z, "conserve") <- list(checkspacing = FALSE)
+    return(Z)
+}
+```
+
+##G function code
+```{r}
+function (X, r = NULL, breaks = NULL, ..., correction = c("rs", 
+    "km", "han"), domain = NULL) 
+{
+    verifyclass(X, "ppp")
+    if (!is.null(domain)) 
+        stopifnot(is.subset.owin(domain, Window(X)))
+    W <- X$window
+    npts <- npoints(X)
+    lambda <- npts/area(W)
+    rmaxdefault <- rmax.rule("G", W, lambda)
+    breaks <- handle.r.b.args(r, breaks, W, rmaxdefault = rmaxdefault)
+    rvals <- breaks$r
+    rmax <- breaks$max
+    zeroes <- numeric(length(rvals))
+    if (is.null(correction)) {
+        correction <- c("rs", "km", "han")
+    }
+    else correction <- pickoption("correction", correction, c(none = "none", 
+        border = "rs", rs = "rs", KM = "km", km = "km", Kaplan = "km", 
+        han = "han", Hanisch = "han", cs = "han", ChiuStoyan = "han", 
+        best = "km"), multi = TRUE)
+    nnd <- nndist(X$x, X$y)
+    bdry <- bdist.points(X)
+    if (!is.null(domain)) {
+        ok <- inside.owin(X, w = domain)
+        nnd <- nnd[ok]
+        bdry <- bdry[ok]
+    }
+    o <- pmin.int(nnd, bdry)
+    d <- (nnd <= bdry)
+    df <- data.frame(r = rvals, theo = 1 - exp(-lambda * pi * 
+        rvals^2))
+    Z <- fv(df, "r", substitute(G(r), NULL), "theo", . ~ r, c(0, 
+        rmax), c("r", "%s[pois](r)"), c("distance argument r", 
+        "theoretical Poisson %s"), fname = "G")
+    if ("none" %in% correction) {
+        if (npts <= 1) 
+            edf <- zeroes
+        else {
+            hh <- hist(nnd[nnd <= rmax], breaks = breaks$val, 
+                plot = FALSE)$counts
+            edf <- cumsum(hh)/length(nnd)
+        }
+        Z <- bind.fv(Z, data.frame(raw = edf), "hat(%s)[raw](r)", 
+            "uncorrected estimate of %s", "raw")
+    }
+    if ("han" %in% correction) {
+        if (npts <= 1) 
+            G <- zeroes
+        else {
+            x <- nnd[d]
+            a <- eroded.areas(W, rvals, subset = domain)
+            h <- hist(x[x <= rmax], breaks = breaks$val, plot = FALSE)$counts
+            G <- cumsum(h/a)
+            G <- G/max(G[is.finite(G)])
+        }
+        Z <- bind.fv(Z, data.frame(han = G), "hat(%s)[han](r)", 
+            "Hanisch estimate of %s", "han")
+        attr(Z, "alim") <- range(rvals[G <= 0.9])
+    }
+    if (any(correction %in% c("rs", "km"))) {
+        if (npts == 0) 
+            result <- data.frame(rs = zeroes, km = zeroes, hazard = zeroes, 
+                theohaz = zeroes)
+        else {
+            result <- km.rs(o, bdry, d, breaks)
+            result$theohaz <- 2 * pi * lambda * rvals
+            result <- as.data.frame(result[c("rs", "km", "hazard", 
+                "theohaz")])
+        }
+        Z <- bind.fv(Z, result, c("hat(%s)[bord](r)", "hat(%s)[km](r)", 
+            "hat(h)[km](r)", "h[pois](r)"), c("border corrected estimate of %s", 
+            "Kaplan-Meier estimate of %s", "Kaplan-Meier estimate of hazard function h(r)", 
+            "theoretical Poisson hazard function h(r)"), "km")
+        attr(Z, "alim") <- range(rvals[result$km <= 0.9])
+    }
+    nama <- names(Z)
+    fvnames(Z, ".") <- rev(setdiff(nama, c("r", "hazard", "theohaz")))
+    unitname(Z) <- unitname(X)
+    return(Z)
+}
+```
+
+###K-function
+```{r}
+function (X, ..., r = NULL, rmax = NULL, breaks = NULL, correction = c("border", 
+    "isotropic", "Ripley", "translate"), nlarge = 3000, domain = NULL, 
+    var.approx = FALSE, ratio = FALSE) 
+{
+    verifyclass(X, "ppp")
+    nlarge.given <- !missing(nlarge) && !is.null(nlarge)
+    rfixed <- !is.null(r) || !is.null(breaks)
+    npts <- npoints(X)
+    W <- X$window
+    areaW <- area(W)
+    lambda <- npts/areaW
+    lambda2 <- (npts * (npts - 1))/(areaW^2)
+    if (!is.null(domain)) {
+        domain <- as.owin(domain)
+        if (!is.subset.owin(domain, W)) 
+            stop(paste(dQuote("domain"), "is not a subset of the window of X"))
+        indom <- factor(inside.owin(X$x, X$y, domain), levels = c(FALSE, 
+            TRUE))
+        Kd <- Kdot(X %mark% indom, i = "TRUE", r = r, breaks = breaks, 
+            correction = correction, ratio = ratio)
+        Kd <- rebadge.fv(Kd, quote(K(r)), "K")
+        return(Kd)
+    }
+    rmaxdefault <- rmax %orifnull% rmax.rule("K", W, lambda)
+    if (is.infinite(rmaxdefault)) 
+        rmaxdefault <- diameter(W)
+    breaks <- handle.r.b.args(r, breaks, W, rmaxdefault = rmaxdefault)
+    r <- breaks$r
+    rmax <- breaks$max
+    correction.given <- !missing(correction) && !is.null(correction)
+    if (is.null(correction)) 
+        correction <- c("border", "isotropic", "Ripley", "translate")
+    correction <- pickoption("correction", correction, c(none = "none", 
+        border = "border", bord.modif = "bord.modif", isotropic = "isotropic", 
+        Ripley = "isotropic", trans = "translate", translate = "translate", 
+        translation = "translate", rigid = "rigid", good = "good", 
+        best = "best"), multi = TRUE)
+    if ("good" %in% correction) 
+        correction[correction == "good"] <- good.correction.K(X)
+    correction <- implemented.for.K(correction, W$type, correction.given)
+    alim <- c(0, min(rmax, rmaxdefault))
+    can.do.fast <- breaks$even
+    large.n <- (npts >= nlarge)
+    large.n.trigger <- large.n && !correction.given
+    fastcorrections <- c("border", "bord.modif", "none")
+    fastdefault <- "border"
+    correction.fast <- all(correction %in% fastcorrections)
+    will.do.fast <- can.do.fast && (correction.fast || large.n.trigger)
+    asked <- correction.fast || (nlarge.given && large.n.trigger)
+    if (asked && !can.do.fast) 
+        warning("r values not evenly spaced - cannot use efficient code")
+    if (will.do.fast) {
+        ok <- correction %in% fastcorrections
+        correction <- if (any(ok)) 
+            correction[ok]
+        else fastdefault
+        bord <- any(correction %in% c("border", "bord.modif"))
+        none <- any(correction == "none")
+        if (!all(ok)) {
+            corx <- c(if (bord) "border correction estimate" else NULL, 
+                if (none) "uncorrected estimate" else NULL)
+            corx <- paste(corx, collapse = " and ")
+            message(paste("number of data points exceeds", nlarge, 
+                "- computing", corx, "only"))
+        }
+        if (!rfixed) 
+            r <- seq(from = 0, to = alim[2], length.out = length(r))
+        if (bord) 
+            Kb <- Kborder.engine(X, max(r), length(r), correction, 
+                ratio = ratio)
+        if (none) 
+            Kn <- Knone.engine(X, max(r), length(r), ratio = ratio)
+        if (bord && none) {
+            Kn <- Kn[, names(Kn) != "theo"]
+            yn <- fvnames(Kb, ".y")
+            Kbn <- if (!ratio) 
+                bind.fv(Kb, Kn, preferred = yn)
+            else bind.ratfv(Kb, Kn, preferred = yn)
+            return(Kbn)
+        }
+        if (bord) 
+            return(Kb)
+        if (none) 
+            return(Kn)
+    }
+    do.fast.rectangle <- can.do.fast && is.rectangle(W) && spatstat.options("use.Krect") && 
+        !any(correction == "rigid")
+    if (do.fast.rectangle) {
+        K <- Krect.engine(X, rmax, length(r), correction, ratio = ratio)
+        attr(K, "alim") <- alim
+    }
+    else {
+        Kdf <- data.frame(r = r, theo = pi * r^2)
+        desc <- c("distance argument r", "theoretical Poisson %s")
+        denom <- lambda2 * areaW
+        K <- ratfv(Kdf, NULL, denom, "r", quote(K(r)), "theo", 
+            NULL, alim, c("r", "%s[pois](r)"), desc, fname = "K", 
+            ratio = ratio)
+        rmax <- max(r)
+        what <- if (any(correction %in% c("translate", "isotropic"))) 
+            "all"
+        else "ijd"
+        close <- closepairs(X, rmax, what = what)
+        DIJ <- close$d
+        gW <- NULL
+        if (any(correction %in% c("translate", "rigid", "isotropic"))) 
+            gW <- setcov(W)
+        if (any(correction == "none")) {
+            wh <- whist(DIJ, breaks$val)
+            numKun <- cumsum(wh)
+            denKun <- lambda2 * areaW
+            K <- bind.ratfv(K, data.frame(un = numKun), denKun, 
+                "hat(%s)[un](r)", "uncorrected estimate of %s", 
+                "un", ratio = ratio)
+        }
+        if (any(correction == "border" | correction == "bord.modif")) {
+            b <- bdist.points(X)
+            I <- close$i
+            bI <- b[I]
+            RS <- Kount(DIJ, bI, b, breaks)
+            if (any(correction == "bord.modif")) {
+                denom.area <- eroded.areas(W, r)
+                numKbm <- RS$numerator
+                denKbm <- lambda2 * denom.area
+                K <- bind.ratfv(K, data.frame(bord.modif = numKbm), 
+                  data.frame(bord.modif = denKbm), "hat(%s)[bordm](r)", 
+                  "modified border-corrected estimate of %s", 
+                  "bord.modif", ratio = ratio)
+            }
+            if (any(correction == "border")) {
+                numKb <- RS$numerator
+                denKb <- lambda * RS$denom.count
+                K <- bind.ratfv(K, data.frame(border = numKb), 
+                  data.frame(border = denKb), "hat(%s)[bord](r)", 
+                  "border-corrected estimate of %s", "border", 
+                  ratio = ratio)
+            }
+        }
+        if (any(correction == "translate")) {
+            edgewt <- edge.Trans(dx = close$dx, dy = close$dy, 
+                W = W, paired = TRUE, gW = gW, give.rmax = TRUE)
+            wh <- whist(DIJ, breaks$val, edgewt)
+            numKtrans <- cumsum(wh)
+            denKtrans <- lambda2 * areaW
+            h <- attr(edgewt, "rmax")
+            numKtrans[r >= h] <- NA
+            K <- bind.ratfv(K, data.frame(trans = numKtrans), 
+                denKtrans, "hat(%s)[trans](r)", "translation-corrected estimate of %s", 
+                "trans", ratio = ratio)
+        }
+        if (any(correction == "rigid")) {
+            CW <- rotmean(gW)
+            edgewt <- areaW/as.function(CW)(DIJ)
+            wh <- whist(DIJ, breaks$val, edgewt)
+            numKrigid <- cumsum(wh)
+            denKrigid <- lambda2 * areaW
+            h <- rmax.Rigid(X, gW)
+            numKrigid[r >= h] <- NA
+            K <- bind.ratfv(K, data.frame(rigid = numKrigid), 
+                denKrigid, "hat(%s)[rigid](r)", "rigid motion-corrected estimate of %s", 
+                "rigid", ratio = ratio)
+        }
+        if (any(correction == "isotropic")) {
+            XI <- ppp(close$xi, close$yi, window = W, check = FALSE)
+            edgewt <- edge.Ripley(XI, matrix(DIJ, ncol = 1))
+            wh <- whist(DIJ, breaks$val, edgewt)
+            numKiso <- cumsum(wh)
+            denKiso <- lambda2 * areaW
+            h <- boundingradius(W)
+            numKiso[r >= h] <- NA
+            K <- bind.ratfv(K, data.frame(iso = numKiso), denKiso, 
+                "hat(%s)[iso](r)", "Ripley isotropic correction estimate of %s", 
+                "iso", ratio = ratio)
+        }
+    }
+    if (var.approx) {
+        A <- areaW
+        P <- perimeter(W)
+        n <- npts
+        rip <- 2 * ((A/(n - 1))^2) * (pi * r^2/A + 0.96 * P * 
+            r^3/A^2 + 0.13 * (n/A) * P * r^5/A^2)
+        if (!ratio) {
+            K <- bind.fv(K, data.frame(rip = rip), "vR(r)", "Ripley approximation to var(%s) under CSR", 
+                "iso")
+        }
+        else {
+            den <- (n - 1)^2
+            ripnum <- den * rip
+            ripden <- rep.int(den, length(rip))
+            K <- bind.ratfv(K, data.frame(rip = ripnum), data.frame(rip = ripden), 
+                "vR(r)", "Ripley approximation to var(%s) under CSR", 
+                "iso")
+        }
+        if (W$type == "rectangle") {
+            a1r <- (0.21 * P * r^3 + 1.3 * r^4)/A^2
+            a2r <- (0.24 * P * r^5 + 2.62 * r^6)/A^3
+            br <- (pi * r^2/A) * (1 - pi * r^2/A) + (1.0716 * 
+                P * r^3 + 2.2375 * r^4)/A^2
+            ls <- (A^2) * (2 * br - a1r + (n - 2) * a2r)/(n * 
+                (n - 1))
+            if (!ratio) {
+                K <- bind.fv(K, data.frame(ls = ls), "vLS(r)", 
+                  "Lotwick-Silverman approx to var(%s) under CSR", 
+                  "iso")
+            }
+            else {
+                den <- n * (n - 1)
+                lsnum <- ls * den
+                lsden <- rep.int(den, length(ls))
+                K <- bind.ratfv(K, data.frame(ls = lsnum), data.frame(ls = lsden), 
+                  "vLS(r)", "Lotwick-Silverman approx to var(%s) under CSR", 
+                  "iso")
+            }
+        }
+    }
+    formula(K) <- . ~ r
+    nama <- rev(colnames(K))
+    fvnames(K, ".") <- setdiff(nama, c("r", "rip", "ls"))
+    unitname(K) <- unitname(X)
+    if (ratio) 
+        K <- conform.ratfv(K)
+    return(K)
+}
+```
+
+```{r}
+#all stats
+function (pp, ..., dataname = NULL, verb = FALSE) 
+{
+    verifyclass(pp, "ppp")
+    if (is.marked(pp)) 
+        stop("This function is applicable only to unmarked patterns.\n")
+    if (verb) 
+        cat("Calculating F, G, J ...")
+    Jout <- do.call.matched(Jest, list(X = pp, ...))
+    if (verb) 
+        cat("ok.\n")
+    Fout <- attr(Jout, "F")
+    Gout <- attr(Jout, "G")
+    attr(Jout, "F") <- NULL
+    attr(Jout, "G") <- NULL
+    fns <- list(`F function` = Fout, `G function` = Gout, `J function` = Jout)
+    if (verb) 
+        cat("Calculating K function...")
+    Kout <- do.call.matched(Kest, list(X = pp, ...))
+    fns <- append(fns, list(`K function` = Kout))
+    if (verb) 
+        cat("done.\n")
+    if (is.null(dataname)) 
+        dataname <- short.deparse(substitute(pp))
+    title <- paste("Four summary functions for ", dataname, ".", 
+        sep = "")
+    attr(fns, "title") <- title
+    fns <- as.anylist(fns)
+    return(fns)
+}
+```
+
