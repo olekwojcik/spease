@@ -1,0 +1,107 @@
+---
+title: "Olek's Function Work"
+author: "Olek Wojcik"
+date: "4/22/2021"
+output: pdf_document
+---
+```{r}
+library(tidyverse)
+library(sf)
+library(pdxTrees)
+```
+
+```{r}
+set.seed(13)
+
+pdx <- get_pdxTrees_parks() %>%
+  sample_n(100)
+
+pdx_sf <- st_as_sf(pdx,
+                   coords = c("Longitude", "Latitude"),
+                   crs = 4326)
+
+
+one_nn_distance <- function(sf_object, one_row){
+  sf_object %>%
+    mutate(distance_temporary_column = as.numeric(st_distance(one_row, sf_object)))%>%
+    #shouldnt make a new column like this
+    filter(distance_temporary_column != 0) %>%
+    #what do we do if multiple points are on the same spot?
+    summarize(m = min(distance_temporary_column)) %>%
+    as.data.frame() %>%
+    select(m) %>%
+    as.numeric()
+}
+
+pdx_one <- slice_head(pdx_sf, n = 1)
+
+hello <- one_nn_distance(pdx_one$geometry, pdx_sf)
+
+
+sf_nn_distances <- function(sf_object){
+  sf_object %>%
+    rowwise() %>%
+    mutate(distance = one_nn_distance(sf_object = sf_object,
+                                      one_row = geometry))
+  }
+
+pdx_dist <- sf_nn_distances(pdx_sf)
+
+g_function <- function(sf_object){
+  
+  distances <- sf_nn_distances(sf_object)$distance
+  
+  max_dist <- max(distances)
+  
+  distances_df <- data.frame(distances = distances)
+  
+  d <- seq(from = 0, to = max_dist, by = max_dist/100)
+  
+  props <- d %>%
+    map_dbl(.f = function(.){
+      #print(distances_df$distances > .)
+      mutate(distances_df,
+             true = case_when(distances < . ~ 1,
+                              distances >= . ~ 0)) %>%
+        summarize(prop = mean(true)) %>%
+        as.double()
+    })
+  
+  data.frame(distance = d,
+             prop = props)
+}
+
+g_df <- g_function(pdx_sf)
+
+ggplot(data = g_df,
+       mapping = aes(x = distance,
+                     y = prop)) +
+  geom_line(color = "steelblue") +
+  geom_point(color = "steelblue") +
+  theme_minimal() +
+  labs(title = "G-Function")
+```
+
+```{r}
+#trash experimental functions
+one_nn <- function(one_row, sf_object){
+  sf_object %>%
+    mutate(distance_temporary_column = as.numeric(st_distance(one_row, sf_object)))%>%
+    #shouldnt make a new column like this
+    filter(distance_temporary_column != 0) %>%
+    #what do we do if multiple points are on the same spot?
+    filter(distance_temporary_column == min(distance_temporary_column)) %>%
+    select(-distance_temporary_column)
+}
+
+sf_nn <- function(sf_object){
+  sf_object %>%
+    rowwise() %>%
+    map(.f = function(.){
+      #one_geom <- st_transform(., crs = 4326)
+      one_nn(., sf_object)
+    })
+}
+```
+
+
