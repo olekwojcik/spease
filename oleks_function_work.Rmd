@@ -35,7 +35,6 @@ one_nn_distance <- function(sf_object, one_row){
 
 pdx_one <- slice_head(pdx_sf, n = 1)
 
-hello <- one_nn_distance(pdx_one$geometry, pdx_sf)
 
 
 sf_nn_distances <- function(sf_object){
