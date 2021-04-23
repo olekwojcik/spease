@@ -21,9 +21,9 @@ pdx_sf <- st_as_sf(pdx,
                    crs = 4326)
 
 
-one_nn_distance <- function(sf_object, one_row){
+one_nn_distance <- function(sf_object, one_row, ...){
   sf_object %>%
-    mutate(distance_temporary_column = as.numeric(st_distance(one_row, sf_object)))%>%
+    mutate(distance_temporary_column = as.numeric(st_distance(one_row, sf_object, ...)))%>%
     #shouldnt make a new column like this
     filter(distance_temporary_column != 0) %>%
     #what do we do if multiple points are on the same spot?
@@ -37,18 +37,18 @@ pdx_one <- slice_head(pdx_sf, n = 1)
 
 
 
-sf_nn_distances <- function(sf_object){
+sf_nn_distances <- function(sf_object, ...){
   sf_object %>%
     rowwise() %>%
     mutate(distance = one_nn_distance(sf_object = sf_object,
-                                      one_row = geometry))
+                                      one_row = geometry, ...))
   }
 
 pdx_dist <- sf_nn_distances(pdx_sf)
 
-g_function <- function(sf_object){
+g_function <- function(sf_object, ...){
   
-  distances <- sf_nn_distances(sf_object)$distance
+  distances <- sf_nn_distances(sf_object, ...)$distance
   
   max_dist <- max(distances)
   
