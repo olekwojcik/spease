@@ -8,6 +8,7 @@ output: pdf_document
 library(tidyverse)
 library(sf)
 library(pdxTrees)
+library(lwgeom)
 ```
 
 ```{r}
@@ -20,38 +21,40 @@ pdx_sf <- st_as_sf(pdx,
                    coords = c("Longitude", "Latitude"),
                    crs = 4326)
 
-
-one_nn_distance <- function(sf_object, one_row, ...){
-  sf_object %>%
-    mutate(distance_temporary_column = as.numeric(st_distance(one_row, sf_object, ...)))%>%
-    #shouldnt make a new column like this
-    filter(distance_temporary_column != 0) %>%
-    #what do we do if multiple points are on the same spot?
-    summarize(m = min(distance_temporary_column)) %>%
-    as.data.frame() %>%
-    select(m) %>%
-    as.numeric()
-}
-
-pdx_one <- slice_head(pdx_sf, n = 1)
-
-
-
-sf_nn_distances <- function(sf_object, ...){
-  sf_object %>%
-    rowwise() %>%
-    mutate(distance = one_nn_distance(sf_object = sf_object,
-                                      one_row = geometry, ...))
-  }
-
+#I don't think we need these helper functions, I used a simpler method below, lmk if I missed something. 
+# one_nn_distance <- function(sf_object, one_row, ...){
+#   sf_object %>%
+#     mutate(distance_temporary_column = as.numeric(st_distance(one_row, sf_object, ...)))%>%
+#     #shouldnt make a new column like this
+#     filter(distance_temporary_column != 0) %>%
+#     #what do we do if multiple points are on the same spot?
+#     summarize(m = min(distance_temporary_column)) %>%
+#     as.data.frame() %>%
+#     dplyr::select(m) %>%
+#     as.numeric()
+# }
+# 
+# pdx_one <- slice_head(pdx_sf, n = 1)
+# 
+# 
+# sf_nn_distances <- function(sf_object, ...){
+#   sf_object %>%
+#     rowwise() %>%
+#     mutate(distance = one_nn_distance(sf_object = sf_object,
+#                                       one_row = geometry, ...))
+#   }
 pdx_dist <- sf_nn_distances(pdx_sf)
+```
 
+
+##G Function
+```{r}
 g_function <- function(sf_object, ...){
-  
-  distances <- sf_nn_distances(sf_object, ...)$distance
-  
+  g <- st_distance(sf_object)
+gm <- as.matrix(g)
+diag(gm) <- NA
+distances <- apply(gm, 1, min, na.rm=TRUE)
   max_dist <- max(distances)
-  
   distances_df <- data.frame(distances = distances)
   
   d <- seq(from = 0, to = max_dist, by = max_dist/100)
@@ -80,6 +83,71 @@ ggplot(data = g_df,
   theme_minimal() +
   labs(title = "G-Function")
 ```
+
+
+##F Function
+```{r}
+set.seed(20)
+f_function <- function(sf_object, ...){
+  #First generating random points
+   bb_studyregion = st_bbox(sf_object) # the study region's bounds
+  random_df = tibble(
+  x = runif(n = length(sf_object), min = bb_studyregion[1], max = bb_studyregion[3]),
+  y = runif(n = length(sf_object), min = bb_studyregion[2], max = bb_studyregion[4])
+  )
+  random_points = random_df %>% 
+  st_as_sf(coords = c("x", "y")) %>% # set coordinates
+  st_set_crs(4326) # set geographic CRS 
+ #prepping for the F-function formula
+  dt <- st_distance(random_points, sf_object$geometry)
+  dm <- as.matrix(dt)
+  distances <- apply(dm, 1, min, na.rm=TRUE)
+  max_dist <- max(distances)
+  distances_df <- data.frame(distances = distances)
+  d <- seq(from = 0, to = max_dist, by = max_dist/100)
+  props <- d %>%
+    map_dbl(.f = function(.){
+      #print(distances_df$distances > .)
+      mutate(distances_df,
+             true = case_when(distances < . ~ 1,
+                              distances >= . ~ 0)) %>%
+        summarize(prop = mean(true)) %>%
+        as.double()
+    })
+  data.frame(distance = d,
+             prop = props)
+}
+f_df <- f_function(pdx_sf)
+ggplot(data = f_df,
+       mapping = aes(x = distance,
+                     y = prop)) +
+  geom_line(color = "steelblue") +
+  geom_point(color = "steelblue") +
+  theme_minimal() +
+  labs(title = "F-Function")
+```
+
+
+##K Function
+```{r}
+set.seed(20)
+k <- st_distance(pdx_sf)
+km <- as.matrix(k)
+diag(km) <- NA
+kmin <- apply(km, 1, min, na.rm=TRUE)
+
+#couldn't find the area/density
+a <- st_area(pdx_sf$geometry)
+units::set_units(a, km^2)
+as.numeric(a)
+  
+#What we did in class
+distance <- seq(1, 30000, 100)
+Kd <- sapply(distance, function(x) sum(kmin < x)) # takes a while
+Kd <- Kd / (length(Kd) * dens)
+plot(distance, Kd, type='l', lwd=2)
+```
+
 
 ```{r}
 #trash experimental functions
