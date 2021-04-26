@@ -130,22 +130,30 @@ ggplot(data = f_df,
 
 ##K Function
 ```{r}
+library(geosphere)
 set.seed(20)
-k <- st_distance(pdx_sf)
-km <- as.matrix(k)
-diag(km) <- NA
-kmin <- apply(km, 1, min, na.rm=TRUE)
+pol <-  st_as_sfc(st_bbox(pdx_sf))
+pdx_area <- st_area(pol)
+pdx_dens <- pdx_area/nrow(pdx_sf)
 
-#couldn't find the area/density
-a <- st_area(pdx_sf$geometry)
-units::set_units(a, km^2)
-as.numeric(a)
-  
+#distance
+xy <- st_coordinates(pdx_sf)
+xy <- unique(xy)
+d <- dist(xy)
+head(d)
+
 #What we did in class
-distance <- seq(1, 30000, 100)
-Kd <- sapply(distance, function(x) sum(kmin < x)) # takes a while
+dist <- seq(1, 30000, 100)
+Kd <- sapply(dist, function(x) sum(d < x)) # takes a while
 Kd <- Kd / (length(Kd) * dens)
-plot(distance, Kd, type='l', lwd=2)
+K_df <- data.frame(distance = dist, Kd=Kd)
+ggplot(data = K_df,
+       mapping = aes(x = distance,
+                     y = Kd)) +
+  geom_line(color = "steelblue") +
+  geom_point(color = "steelblue") +
+  theme_minimal() +
+  labs(title = "K-Function")
 ```
 
 
