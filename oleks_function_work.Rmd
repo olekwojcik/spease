@@ -47,7 +47,7 @@ pdx_sf <- st_as_sf(pdx,
 
 
 ##G Function
-```{r}
+```{r, fig.height=4,fig.width=5}
 g_function <- function(sf_object, ...){
   g <- st_distance(sf_object)
 gm <- as.matrix(g)
@@ -67,13 +67,8 @@ distances <- apply(gm, 1, min, na.rm=TRUE)
         summarize(prop = mean(true)) %>%
         as.double()
     })
-  
-  data.frame(distance = d,
+g_df <- data.frame(distance = d,
              prop = props)
-}
-
-g_df <- g_function(pdx_sf)
-
 ggplot(data = g_df,
        mapping = aes(x = distance,
                      y = prop)) +
@@ -81,12 +76,15 @@ ggplot(data = g_df,
   geom_point(color = "steelblue") +
   theme_minimal() +
   labs(title = "G-Function")
+}
+
+g_function(pdx_sf)
 ```
 
 
 ##F Function
-```{r}
-set.seed(20)
+```{r, fig.height=4,fig.width=5}
+set.seed(22)
 f_function <- function(sf_object, ...){
   #First generating random points
    bb_studyregion = st_bbox(sf_object) # the study region's bounds
@@ -113,10 +111,8 @@ f_function <- function(sf_object, ...){
         summarize(prop = mean(true)) %>%
         as.double()
     })
-  data.frame(distance = d,
+ f_df <- data.frame(distance = d,
              prop = props)
-}
-f_df <- f_function(pdx_sf)
 ggplot(data = f_df,
        mapping = aes(x = distance,
                      y = prop)) +
@@ -124,28 +120,26 @@ ggplot(data = f_df,
   geom_point(color = "steelblue") +
   theme_minimal() +
   labs(title = "F-Function")
+}
+f_function(pdx_sf)
 ```
 
 
 ##K Function
-```{r}
+```{r, fig.height=4,fig.width=5}
 library(geosphere)
-set.seed(20)
-pol <-  st_as_sfc(st_bbox(pdx_sf))
-pdx_area <- st_area(pol)
-pdx_dens <- pdx_area/nrow(pdx_sf)
-
+k_function <- function(sf_object, ...){
+pol <-  st_as_sfc(st_bbox(sf_object))
+sfarea <- as.numeric(st_area(pol))
+sfdens <- as.numeric(sfarea/nrow(sf_object))
 #distance
-d <- st_distance(pdx_sf)
+d <- st_distance(sf_object)
 diag(d) <- NA
 ds <- apply(d, 1, min, na.rm=TRUE)
-
-head(d)
-
 #What we did in class
-dist <- seq(1, 3000, 100)
+dist <- seq(1, 3000, 50)
 Kd <- sapply(dist, function(x) sum(ds < x)) # takes a while
-Kd <- Kd / (length(Kd) * dens)
+Kd <- Kd / (length(Kd) * sfdens)
 K_df <- data.frame(distance = dist, Kd=Kd)
 ggplot(data = K_df,
        mapping = aes(x = distance,
@@ -154,6 +148,9 @@ ggplot(data = K_df,
   geom_point(color = "steelblue") +
   theme_minimal() +
   labs(title = "K-Function")
+}
+
+k_function(pdx_sf)
 ```
 
 ```{r}
