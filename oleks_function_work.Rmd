@@ -43,7 +43,6 @@ pdx_sf <- st_as_sf(pdx,
 #     mutate(distance = one_nn_distance(sf_object = sf_object,
 #                                       one_row = geometry, ...))
 #   }
-pdx_dist <- sf_nn_distances(pdx_sf)
 ```
 
 
@@ -137,14 +136,15 @@ pdx_area <- st_area(pol)
 pdx_dens <- pdx_area/nrow(pdx_sf)
 
 #distance
-xy <- st_coordinates(pdx_sf)
-xy <- unique(xy)
-d <- dist(xy)
+d <- st_distance(pdx_sf)
+diag(d) <- NA
+ds <- apply(d, 1, min, na.rm=TRUE)
+
 head(d)
 
 #What we did in class
-dist <- seq(1, 30000, 100)
-Kd <- sapply(dist, function(x) sum(d < x)) # takes a while
+dist <- seq(1, 3000, 100)
+Kd <- sapply(dist, function(x) sum(ds < x)) # takes a while
 Kd <- Kd / (length(Kd) * dens)
 K_df <- data.frame(distance = dist, Kd=Kd)
 ggplot(data = K_df,
@@ -155,7 +155,6 @@ ggplot(data = K_df,
   theme_minimal() +
   labs(title = "K-Function")
 ```
-
 
 ```{r}
 #trash experimental functions
