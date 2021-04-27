@@ -55,9 +55,7 @@ diag(gm) <- NA
 distances <- apply(gm, 1, min, na.rm=TRUE)
   max_dist <- max(distances)
   distances_df <- data.frame(distances = distances)
-  
   d <- seq(from = 0, to = max_dist, by = max_dist/100)
-  
   props <- d %>%
     map_dbl(.f = function(.){
       #print(distances_df$distances > .)
@@ -73,7 +71,6 @@ ggplot(data = g_df,
        mapping = aes(x = distance,
                      y = prop)) +
   geom_line(color = "steelblue") +
-  geom_point(color = "steelblue") +
   theme_minimal() +
   labs(title = "G-Function")
 }
@@ -94,7 +91,7 @@ f_function <- function(sf_object, ...){
   )
   random_points = random_df %>% 
   st_as_sf(coords = c("x", "y")) %>% # set coordinates
-  st_set_crs(4326) # set geographic CRS 
+  st_set_crs(st_crs(sf_object)) # set geographic CRS 
  #prepping for the F-function formula
   dt <- st_distance(random_points, sf_object$geometry)
   dm <- as.matrix(dt)
@@ -117,7 +114,6 @@ ggplot(data = f_df,
        mapping = aes(x = distance,
                      y = prop)) +
   geom_line(color = "steelblue") +
-  geom_point(color = "steelblue") +
   theme_minimal() +
   labs(title = "F-Function")
 }
@@ -132,26 +128,32 @@ k_function <- function(sf_object, ...){
 pol <-  st_as_sfc(st_bbox(sf_object))
 sfarea <- as.numeric(st_area(pol))
 sfdens <- as.numeric(sfarea/nrow(sf_object))
+
 #distance
-d <- st_distance(sf_object)
-diag(d) <- NA
-ds <- apply(d, 1, min, na.rm=TRUE)
-#What we did in class
-dist <- seq(1, 3000, 50)
-Kd <- sapply(dist, function(x) sum(ds < x)) # takes a while
+xy <- as.data.frame(st_coordinates(pdx_sf))
+d <- vector()
+d[1] <- 0
+for(i in 2:nrow(xy)){
+lonlat_dist <- distance(lat1=xy$Y[i-1],lon1=xy$X[i-1],lat2=xy$Y[i],lon2=xy$X[i])
+d[i] <- as.numeric(lonlat_dist[5]) # the fifth element of the output frame is the distance between the points.
+}
+
+#Applying formula from class
+dist <- seq(1, 25000, 100)
+Kd <- sapply(dist, function(x) sum(d < x)) # takes a while
 Kd <- Kd / (length(Kd) * sfdens)
 K_df <- data.frame(distance = dist, Kd=Kd)
 ggplot(data = K_df,
        mapping = aes(x = distance,
                      y = Kd)) +
   geom_line(color = "steelblue") +
-  geom_point(color = "steelblue") +
   theme_minimal() +
   labs(title = "K-Function")
 }
 
 k_function(pdx_sf)
 ```
+
 
 ```{r}
 #trash experimental functions
