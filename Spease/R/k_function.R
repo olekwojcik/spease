@@ -1,4 +1,12 @@
-library(geosphere)
+#' K Function
+#'
+#' This function does the K Function.
+#' @name k_function
+#' @param sf_object An sf object.
+#' @keywords spatial
+#' @export
+
+
 k_function <- function(sf_object, ...){
   pol <-  st_as_sfc(st_bbox(sf_object))
   sfarea <- as.numeric(st_area(pol))

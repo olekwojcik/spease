@@ -1,3 +1,11 @@
+#' G Function
+#'
+#' This function does the F Function.
+#' @param sf_object An sf object.
+#' @keywords spatial
+#' @export
+
+
 g_function <- function(sf_object, ...){
   g <- st_distance(sf_object)
   gm <- as.matrix(g)

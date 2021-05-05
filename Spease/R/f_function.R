@@ -1,7 +1,14 @@
-set.seed(22)
+#' F Function
+#'
+#' This function does the F Function.
+#' @param sf_object An sf object.
+#' @keywords spatial
+#' @export
+
+
 f_function <- function(sf_object, ...){
   #First generating random points
-  bb_studyregion = st_bbox(sf_object) # the study region's bounds
+  bb_studyregion = sf::st_bbox(sf_object) # the study region's bounds
   random_df = tibble(
     x = runif(n = length(sf_object), min = bb_studyregion[1], max = bb_studyregion[3]),
     y = runif(n = length(sf_object), min = bb_studyregion[2], max = bb_studyregion[4])
