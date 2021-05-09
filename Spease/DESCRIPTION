@@ -1,13 +1,9 @@
 Package: spease
-Title: What the Package Does (One Line, Title Case)
+Title: sf point pattern functions
 Version: 0.0.0.9000
-Authors@R: 
-    person(given = "First",
-           family = "Last",
-           role = c("aut", "cre"),
-           email = "first.last@example.com",
-           comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
+Author: Shisham, Olek
+Maintainer: Olek Wojcik <wojciko@reed.edu>
+Description: Making point pattern measures compatible with sf.
 License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
     license
 Encoding: UTF-8
@@ -15,7 +11,11 @@ LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
 Imports:
-    tidyverse,
+    ggplot2,
+    dplyr,
+    tidyr,
+    purrr,
+    magrittr,
     geosphere,
     sf
 NAMESPACE:

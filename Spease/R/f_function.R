@@ -1,28 +1,45 @@
 #' F Function
 #'
-#' This function does the F Function.
-#' @param sf_object An sf object.
+#' This function implements the F function, similar to the G function, but it is instead the cumulative frequency of distances from points randomly selected within the study region to the nearest event. (Based off of *Geographic Information Analysis* by O’Sullivan and Unwin)
+#' @param sf_object An sf object
+#' @param return_df Logical, TRUE if function should return dataframe, FALSE to return ggplot object. Defaults to FALSE.
+#' @param return_length Numeric, length of dataframe that will be returned. Defaults to 100.
 #' @keywords spatial
 #' @export
 
 
-f_function <- function(sf_object, ...){
+f_function <- function(sf_object, return_df = FALSE, return_length = 100, ...){
+  
+  if(class(sf_object) != c("sf", "tbl_df", "tbl", "data.frame")){
+    stop("sf_object is class ",
+         class(sf_object))
+  }
+  
+  if(class(return_df) != "logical"){
+    stop("return_df is class ",
+         class(return_df))
+  }
+  
+  if(class(return_length) != "numeric" & class(return_length) != "integer"){
+    stop("return_length is class ",
+         class(return_length))
+  }
   #First generating random points
-  bb_studyregion = sf::st_bbox(sf_object) # the study region's bounds
+  bb_studyregion = st_bbox(sf_object) # the study region's bounds
   random_df = tibble(
     x = runif(n = length(sf_object), min = bb_studyregion[1], max = bb_studyregion[3]),
     y = runif(n = length(sf_object), min = bb_studyregion[2], max = bb_studyregion[4])
   )
-  random_points = random_df %>%
+  random_points = random_df %>% 
     st_as_sf(coords = c("x", "y")) %>% # set coordinates
-    st_set_crs(st_crs(sf_object)) # set geographic CRS
+    st_set_crs(st_crs(sf_object)) # set geographic CRS 
   #prepping for the F-function formula
   dt <- st_distance(random_points, sf_object$geometry)
   dm <- as.matrix(dt)
   distances <- apply(dm, 1, min, na.rm=TRUE)
   max_dist <- max(distances)
   distances_df <- data.frame(distances = distances)
-  d <- seq(from = 0, to = max_dist, by = max_dist/100)
+  d <- seq(from = 0, to = max_dist, by = max_dist/return_length)
   props <- d %>%
     map_dbl(.f = function(.){
       #print(distances_df$distances > .)
@@ -34,10 +51,17 @@ f_function <- function(sf_object, ...){
     })
   f_df <- data.frame(distance = d,
                      prop = props)
-  ggplot(data = f_df,
-         mapping = aes(x = distance,
-                       y = prop)) +
-    geom_line(color = "steelblue") +
-    theme_minimal() +
-    labs(title = "F-Function")
+  if(return_df == TRUE){
+    return(f_df)
+  }
+  
+  if(return_df == FALSE){
+    ggplot(data = f_df,
+           mapping = aes(x = distance,
+                         y = prop)) +
+      geom_line(color = "steelblue") +
+      theme_minimal() +
+      labs(title = "F-Function")
+  }
+  
 }

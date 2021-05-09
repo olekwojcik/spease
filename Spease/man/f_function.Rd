@@ -4,12 +4,16 @@
 \alias{f_function}
 \title{F Function}
 \usage{
-f_function(sf_object, ...)
+f_function(sf_object, return_df = FALSE, return_length = 100, ...)
 }
 \arguments{
-\item{sf_object}{An sf object.}
+\item{sf_object}{An sf object}
+
+\item{return_df}{Logical, TRUE if function should return dataframe, FALSE to return ggplot object. Defaults to FALSE.}
+
+\item{return_length}{Numeric, length of dataframe that will be returned. Defaults to 100.}
 }
 \description{
-This function does the F Function.
+This function implements the F function, similar to the G function, but it is instead the cumulative frequency of distances from points randomly selected within the study region to the nearest event. (Based off of \emph{Geographic Information Analysis} by O’Sullivan and Unwin)
 }
 \keyword{spatial}

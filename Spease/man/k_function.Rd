@@ -4,12 +4,16 @@
 \alias{k_function}
 \title{K Function}
 \usage{
-k_function(sf_object, ...)
+k_function(sf_object, return_df = FALSE, return_length = 100, ...)
 }
 \arguments{
 \item{sf_object}{An sf object.}
+
+\item{return_df}{Logical, TRUE if function should return dataframe, FALSE to return ggplot object. Defaults to FALSE.}
+
+\item{return_length}{Numeric, length of dataframe that will be returned. Defaults to 100.}
 }
 \description{
-This function does the K Function.
+This function implements the K Function, which takes the mean of the number of events f each circle of radius distance around each event, and divides it by the study area density. (Based off of \emph{Geographic Information Analysis} by O’Sullivan and Unwin)
 }
 \keyword{spatial}
