@@ -48,14 +48,32 @@ pdx_sf <- st_as_sf(pdx,
 
 ##G Function
 ```{r, fig.height=4,fig.width=5, warning=FALSE}
-g_function <- function(sf_object, ...){
+g_function <- function(sf_object,
+                       return_df = FALSE,
+                       return_length = 100, ...){
+
+if(class(sf_object) != c("sf", "tbl_df", "tbl", "data.frame")){
+  stop("sf_object is class ",
+       class(sf_object))
+}
+
+if(class(return_df) != "logical"){
+  stop("return_df is class ",
+       class(return_df))
+}
+
+if(class(return_length) != "numeric" & class(return_length) != "integer"){
+  stop("return_length is class ",
+       class(return_length))
+}
+
   g <- st_distance(sf_object)
 gm <- as.matrix(g)
 diag(gm) <- NA
 distances <- apply(gm, 1, min, na.rm=TRUE)
   max_dist <- max(distances)
   distances_df <- data.frame(distances = distances)
-  d <- seq(from = 0, to = max_dist, by = max_dist/100)
+  d <- seq(from = 0, to = max_dist, by = max_dist/return_length)
   props <- d %>%
     map_dbl(.f = function(.){
       #print(distances_df$distances > .)
@@ -67,22 +85,46 @@ distances <- apply(gm, 1, min, na.rm=TRUE)
     })
 g_df <- data.frame(distance = d,
              prop = props)
-ggplot(data = g_df,
+
+if(return_df == TRUE){
+  return(g_df)
+}
+
+if(return_df == FALSE){
+  ggplot(data = g_df,
        mapping = aes(x = distance,
                      y = prop)) +
   geom_line(color = "steelblue") +
   theme_minimal() +
   labs(title = "G-Function")
+  
 }
 
-g <- g_function(pdx_sf)
+}
+
+g <- g_function(pdx_sf )
 ```
 
 
 ##F Function
 ```{r, fig.height=4,fig.width=5, warning=FALSE}
 set.seed(22)
-f_function <- function(sf_object, ...){
+f_function <- function(sf_object, return_df = FALSE, return_length = 100, ...){
+
+if(class(sf_object) != c("sf", "tbl_df", "tbl", "data.frame")){
+  stop("sf_object is class ",
+       class(sf_object))
+}
+
+if(class(return_df) != "logical"){
+  stop("return_df is class ",
+       class(return_df))
+}
+
+if(class(return_length) != "numeric" & class(return_length) != "integer"){
+  stop("return_length is class ",
+       class(return_length))
+}
   #First generating random points
    bb_studyregion = st_bbox(sf_object) # the study region's bounds
   random_df = tibble(
@@ -98,7 +140,7 @@ f_function <- function(sf_object, ...){
   distances <- apply(dm, 1, min, na.rm=TRUE)
   max_dist <- max(distances)
   distances_df <- data.frame(distances = distances)
-  d <- seq(from = 0, to = max_dist, by = max_dist/100)
+  d <- seq(from = 0, to = max_dist, by = max_dist/return_length)
   props <- d %>%
     map_dbl(.f = function(.){
       #print(distances_df$distances > .)
@@ -110,12 +152,19 @@ f_function <- function(sf_object, ...){
     })
  f_df <- data.frame(distance = d,
              prop = props)
-ggplot(data = f_df,
+if(return_df == TRUE){
+  return(f_df)
+}
+
+ if(return_df == FALSE){
+   ggplot(data = f_df,
        mapping = aes(x = distance,
                      y = prop)) +
   geom_line(color = "steelblue") +
   theme_minimal() +
   labs(title = "F-Function")
+ }
+
 }
 f <- f_function(pdx_sf)
 ```
@@ -124,7 +173,23 @@ f <- f_function(pdx_sf)
 ##K Function
 ```{r, fig.height=4,fig.width=5, warning=FALSE}
 library(geosphere)
-k_function <- function(sf_object, ...){
+k_function <- function(sf_object, return_df = FALSE, return_length = 100, ...){
+
+if(class(sf_object) != c("sf", "tbl_df", "tbl", "data.frame")){
+  stop("sf_object is class ",
+       class(sf_object))
+}
+
+if(class(return_df) != "logical"){
+  stop("return_df is class ",
+       class(return_df))
+}
+
+if(class(return_length) != "numeric" & class(return_length) != "integer"){
+  stop("return_length is class ",
+       class(return_length))
+}
+  
 pol <-  st_as_sfc(st_bbox(sf_object))
 sfarea <- as.numeric(st_area(pol))
 sfdens <- as.numeric(sfarea/nrow(sf_object))
@@ -132,18 +197,27 @@ sfdens <- as.numeric(sfarea/nrow(sf_object))
 #distance
 d <- distm(st_coordinates(sf_object),st_coordinates(sf_object), fun=distHaversine)
 #Applying formula from class
-dist <- seq(1, 25000, 100)
+dist <- seq(1, 25000, return_length)
 Kd <- sapply(dist, function(x) sum(d < x)) # takes a while
 Kd <- Kd / (length(Kd) * sfdens)
 K_df <- data.frame(distance = dist, Kd=Kd)
-ggplot(data = K_df,
+
+if(return_df == TRUE){
+  return(K_df)
+}
+
+if(return_df == FALSE){
+  ggplot(data = K_df,
        mapping = aes(x = distance,
                      y = Kd)) +
   geom_line(color = "steelblue") +
   theme_minimal() +
   labs(title = "K-Function") 
+  
 }
- k <- k_function(pdx_sf)
+
+}
+k <- k_function(pdx_sf)
 ```
 
 
