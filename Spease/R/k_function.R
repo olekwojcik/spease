@@ -31,7 +31,7 @@ k_function <- function(sf_object, return_df = FALSE, return_length = 100){
   sfdens <- as.numeric(sfarea/nrow(sf_object))
   
   #distance
-  d <- distm(st_coordinates(sf_object),st_coordinates(sf_object), fun=distHaversine)
+  d <- geosphere::distm(st_coordinates(sf_object),st_coordinates(sf_object), fun=distHaversine)
   #Applying formula from class
   dist <- seq(1, 25000, return_length)
   Kd <- sapply(dist, function(x) sum(d < x)) # takes a while
