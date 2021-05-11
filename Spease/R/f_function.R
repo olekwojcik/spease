@@ -4,6 +4,7 @@
 #' @param sf_object An sf object
 #' @param return_df Logical, TRUE if function should return dataframe, FALSE to return ggplot object. Defaults to FALSE.
 #' @param return_length Numeric, length of dataframe that will be returned. Defaults to 100.
+#' @param ... Inherited from st_distance
 #' @keywords spatial
 #' @export
 
@@ -34,7 +35,7 @@ f_function <- function(sf_object, return_df = FALSE, return_length = 100, ...){
     st_as_sf(coords = c("x", "y")) %>% # set coordinates
     st_set_crs(st_crs(sf_object)) # set geographic CRS 
   #prepping for the F-function formula
-  dt <- st_distance(random_points, sf_object$geometry)
+  dt <- st_distance(random_points, sf_object$geometry, ...)
   dm <- as.matrix(dt)
   distances <- apply(dm, 1, min, na.rm=TRUE)
   max_dist <- max(distances)

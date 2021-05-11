@@ -4,7 +4,7 @@
 \alias{k_function}
 \title{K Function}
 \usage{
-k_function(sf_object, return_df = FALSE, return_length = 100, ...)
+k_function(sf_object, return_df = FALSE, return_length = 100)
 }
 \arguments{
 \item{sf_object}{An sf object.}

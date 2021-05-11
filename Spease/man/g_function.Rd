@@ -12,6 +12,8 @@ g_function(sf_object, return_df = FALSE, return_length = 100, ...)
 \item{return_df}{Logical, TRUE if function should return dataframe, FALSE to return ggplot object. Defaults to FALSE.}
 
 \item{return_length}{Numeric, length of dataframe that will be returned. Defaults to 100.}
+
+\item{...}{Inherited from st_distance}
 }
 \description{
 This function implements the G function, or the "refined nearest neighbor", the cumulative frequency distribution of the nearest neighbor distances. (Based off of \emph{Geographic Information Analysis} by O’Sullivan and Unwin)

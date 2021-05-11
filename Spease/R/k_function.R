@@ -9,7 +9,7 @@
 #' @export
 
 
-k_function <- function(sf_object, return_df = FALSE, return_length = 100, ...){
+k_function <- function(sf_object, return_df = FALSE, return_length = 100){
   
   if(class(sf_object) != c("sf", "tbl_df", "tbl", "data.frame")){
     stop("sf_object is class ",
