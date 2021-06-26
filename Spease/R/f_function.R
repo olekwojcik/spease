@@ -45,10 +45,10 @@ f_function <- function(sf_object, return_df = FALSE, return_length = 100, ...){
   props <- d %>%
     map_dbl(.f = function(.){
       #print(distances_df$distances > .)
-      mutate(distances_df,
-             true = case_when(distances < . ~ 1,
-                              distances >= . ~ 0)) %>%
-        summarize(prop = mean(true)) %>%
+      dplyr::mutate(distances_df,
+                    true = dplyr::case_when(distances < . ~ 1,
+                                            distances >= . ~ 0)) %>%
+        dplyr::summarize(prop = mean(true)) %>%
         as.double()
     })
   f_df <- data.frame(distance = d,
@@ -58,12 +58,12 @@ f_function <- function(sf_object, return_df = FALSE, return_length = 100, ...){
   }
   
   if(return_df == FALSE){
-    ggplot(data = f_df,
-           mapping = aes(x = distance,
-                         y = prop)) +
-      geom_line(color = "steelblue") +
-      theme_minimal() +
-      labs(title = "F-Function")
+    ggplot2::ggplot(data = f_df,
+                    mapping = ggplot2::aes(x = distance,
+                                           y = prop)) +
+      ggplot2::geom_line(color = "steelblue") +
+      ggplot2::theme_minimal() +
+      ggplot2::labs(title = "F-Function")
   }
   
 }
