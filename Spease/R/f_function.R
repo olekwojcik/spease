@@ -5,6 +5,7 @@
 #' @param return_df Logical, TRUE if function should return dataframe, FALSE to return ggplot object. Defaults to FALSE.
 #' @param return_length Numeric, length of dataframe that will be returned. Defaults to 100.
 #' @param ... Inherited from st_distance
+#' @importFrom  magrittr %>%
 #' @keywords spatial
 #' @export
 
